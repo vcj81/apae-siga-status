@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Acompanhamento do projeto SIGA — Sistema Integrado de Gestão de Agendas (APAE).">
+<meta name="theme-color" content="#1f6f5c" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141a18" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<!-- [Alteração] Autor: Junior | Data/Hora: 13/10/2026 16:56
+     Fonte oficial do painel (antes apps/docs/artifact-status-projeto.html). Publicada no
+     GitHub Pages do repositório PÚBLICO vcj81/apae-siga-status pelo workflow
+     .github/workflows/publicar-painel.yml, que copia só esta pasta a cada push na main —
+     o apae-siga continua privado (tem dados reais de alunos). Página comum + PWA
+     (manifest.webmanifest + sw.js); as cores dos botões de checklist vêm do Web App do
+     Apps Script (?status=1) ao abrir. Ver apps/painel/README.md. Os comentários antigos
+     sobre "republicar o Artifact" abaixo ficam como histórico. -->
+<!-- Painel de acompanhamento do projeto SIGA para o cliente (APAE), reestruturado por fases. -->
+<!-- Autor: ciaca-jr | Data: 07/08/2026 -->
+<!-- Fonte publicada em https://claude.ai/code/artifact/06cd525f-77c1-4215-8267-a9feee6e9b2f -->
+<!-- o cliente acompanha por esse link fixo; a cada avanço, republica no MESMO endereço -->
+<!-- (ler com WebFetch, editar, republicar). Conteúdo de cada fase extraído literalmente -->
+<!-- de apps/docs/Fase0_Metodologia_Desenvolvimento.md, Fase1_Levantamento_Requisitos.md, -->
+<!-- Fase2_DER.md, Fase3_Fluxos_BPMN.md e Fase3_Checklist_Validacao.md. -->
+<!-- REGRA DE APROVAÇÃO (confirmada 06/08/2026): fase só aparece detalhada e com chip "ok" -->
+<!-- (Concluída) após comando explícito de aprovação do dono do projeto. Fases não aprovadas -->
+<!-- ainda ficam só no roteiro (chip "wait"/"pend"), sem seção de detalhe — mesmo que já -->
+<!-- exista material técnico pronto. Adicionar seção de detalhe só na aprovação daquela fase. -->
+<!-- Aprovação registrada nesta rodada: fases 0, 1, 2 e 3, trabalhadas em 13-17/07/2026 -->
+<!-- e fechadas/revisadas em 23/07/2026. -->
+<!-- REGRA "PRÓXIMO PASSO" (confirmada 07/08/2026): mesmo que já exista material técnico -->
+<!-- pronto pra próxima fase (ex.: wireframes), esta seção fica só como texto descritivo -->
+<!-- do que falta acontecer (aprovação pendente) — nunca como botão/link pro material já pronto. -->
+<!-- REGRA "PRÓXIMO PASSO" → "EM ANDAMENTO" (confirmada 10/08/2026): assim que a fase -->
+<!-- ganhar linha própria na tabela "Dias trabalhados e carga horária" (dias/horas -->
+<!-- lançados), o título "Próximo passo" e o h2 correspondente viram "Em andamento" — -->
+<!-- mesmo texto descritivo, só o título muda. Volta a "Próximo passo" só quando a fase -->
+<!-- for aprovada e ganhar seção de detalhe (chip "ok"/Concluída), e a seção passa a -->
+<!-- descrever a fase seguinte, ainda não lançada na tabela. -->
+<title>SIGA — Acompanhamento do Projeto</title>
+<style>
+  :root {
+    --bg: #f7f8f6;
+    --surface: #ffffff;
+    --ink: #1d2a26;
+    --ink-2: #51625c;
+    --ink-3: #7d8c86;
+    --line: #e2e7e4;
+    --accent: #1f6f5c;
+    --accent-soft: #e3efeb;
+    --done: #1f6f5c;
+    --active: #a05e12;
+    --active-soft: #f6ead9;
+    --pending: #c8d1cd;
+    --pend: #51625c;
+    --pend-soft: #eef0ef;
+    /* [Alteração] Autor: Junior | Data/Hora: 13/10/2026 14:59
+       cor própria pros botões de checklist (ler ou responder), separando dos de documento. */
+    --acao: #a05e12;
+    --acao-ink: #ffffff;
+    /* [Alteração] Autor: Junior | Data/Hora: 13/10/2026 16:19
+       estado dos botões "Responder checklist": vermelho = nunca aberto,
+       laranja (= --acao) = aberto sem envio, verde vivo = respostas enviadas. */
+    --chk-nunca: #b3261e;
+    --chk-enviado: #2e8540;
+    --shadow: 0 1px 2px rgba(29, 42, 38, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141a18;
+      --surface: #1c2422;
+      --ink: #e8ede9;
+      --ink-2: #a7b5af;
+      --ink-3: #75837d;
+      --line: #2b3532;
+      --accent: #58b394;
+      --accent-soft: #22332d;
+      --done: #58b394;
+      --active: #d99c4e;
+      --active-soft: #35301f;
+      --pending: #3a4642;
+      --pend: #a7b5af;
+      --pend-soft: #232b29;
+      --acao: #d99c4e;
+      --acao-ink: #141a18;
+      --chk-nunca: #e8735f;
+      --chk-enviado: #6cc47a;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f8f6; --surface: #ffffff; --ink: #1d2a26; --ink-2: #51625c;
+    --ink-3: #7d8c86; --line: #e2e7e4; --accent: #1f6f5c; --accent-soft: #e3efeb;
+    --done: #1f6f5c; --active: #a05e12; --active-soft: #f6ead9; --pending: #c8d1cd;
+    --pend: #51625c; --pend-soft: #eef0ef; --acao: #a05e12; --acao-ink: #ffffff;
+    --chk-nunca: #b3261e; --chk-enviado: #2e8540;
+    --shadow: 0 1px 2px rgba(29, 42, 38, .05);
+  }
+  :root[data-theme="dark"] {
+    --bg: #141a18; --surface: #1c2422; --ink: #e8ede9; --ink-2: #a7b5af;
+    --ink-3: #75837d; --line: #2b3532; --accent: #58b394; --accent-soft: #22332d;
+    --done: #58b394; --active: #d99c4e; --active-soft: #35301f; --pending: #3a4642;
+    --pend: #a7b5af; --pend-soft: #232b29; --acao: #d99c4e; --acao-ink: #141a18;
+    --chk-nunca: #e8735f; --chk-enviado: #6cc47a;
+    --shadow: none;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 32px 64px; }
+
+  .eyebrow {
+    font-size: .72rem; font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 10px;
+    text-align: center;
+  }
+  h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(2.2rem, 5.5vw, 3.6rem); font-weight: 700;
+    letter-spacing: -.01em; margin: 0 auto 10px; max-width: 22ch;
+    text-align: center;
+  }
+  .sub { color: var(--ink-2); font-size: 1.05rem; margin: 0; text-align: justify; }
+  .stamp { color: var(--ink-3); font-size: .84rem; margin-top: 14px; }
+
+  h2 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.15rem; font-weight: 700; margin: 44px 0 14px;
+  }
+  h3 {
+    font-size: 1rem; font-weight: 700; margin: 0 0 4px; color: var(--ink);
+  }
+
+  .kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px; margin-top: 28px;
+  }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 16px; box-shadow: var(--shadow);
+  }
+  .kpi .label { font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .kpi .value { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .kpi .note { font-size: .8rem; color: var(--ink-2); }
+
+  .track { display: flex; gap: 3px; margin: 4px 0 8px; }
+  .track span { height: 8px; flex: 1; border-radius: 3px; background: var(--pending); }
+  .track .done { background: var(--done); }
+  .track .active { background: var(--active); }
+  .track-caption { font-size: .8rem; color: var(--ink-2); margin-bottom: 18px; }
+
+  .fase {
+    display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: baseline;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 8px; box-shadow: var(--shadow);
+  }
+  .fase .num { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink-3); }
+  .fase .nome { font-weight: 600; }
+  .fase .entrega { display: block; font-size: .84rem; color: var(--ink-2); font-weight: 400; }
+  .chip {
+    font-size: .72rem; font-weight: 600; letter-spacing: .04em; white-space: nowrap;
+    border-radius: 99px; padding: 3px 10px;
+  }
+  .chip.ok { background: var(--accent-soft); color: var(--done); }
+  .chip.now { background: var(--active-soft); color: var(--active); }
+  .chip.pend { background: var(--pend-soft); color: var(--pend); border: 1px dashed var(--ink-3); }
+  .chip.wait { background: transparent; color: var(--ink-3); border: 1px solid var(--line); }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 18px 20px; box-shadow: var(--shadow);
+  }
+  .card ul { margin: 8px 0 0; padding-left: 20px; color: var(--ink-2); }
+  .card li { margin-bottom: 4px; }
+  .card li strong { color: var(--ink); }
+
+  .fase-detalhe {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 20px 22px; box-shadow: var(--shadow); margin-bottom: 16px;
+  }
+  .fase-detalhe header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 10px;
+  }
+  .fase-detalhe .titulo-fase {
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  .fase-detalhe .titulo-fase .num {
+    font-family: Georgia, serif; font-size: 1.3rem; font-weight: 700; color: var(--accent);
+  }
+  .fase-detalhe .entregavel { font-size: .84rem; color: var(--ink-2); margin: 0 0 14px; }
+  .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .btn-aprovar {
+    background: var(--accent); color: #fff; border: none; border-radius: 999px;
+    padding: 5px 14px; font-size: .78rem; font-weight: 600; cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-aprovar:hover { opacity: .9; }
+  .btn-aprovar.aprovado { background: var(--pending); color: var(--ink-2); cursor: default; }
+  .timeline-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 20px; box-shadow: var(--shadow); }
+  .timeline-vazio { color: var(--ink-3); font-size: .88rem; margin: 0; }
+  .timeline-lista { list-style: none; margin: 0; padding: 0; }
+  .timeline-lista li {
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: .88rem;
+  }
+  .timeline-lista li:last-child { border-bottom: none; }
+  .timeline-lista li strong { color: var(--ink); }
+  .timeline-lista li span { color: var(--ink-2); }
+  .fase-detalhe .grid2 {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;
+  }
+  .fase-detalhe .bloco p { margin: 0 0 6px; color: var(--ink-2); font-size: .9rem; }
+  .fase-detalhe .bloco ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); font-size: .88rem; }
+  .fase-detalhe .bloco li { margin-bottom: 4px; }
+  .fase-detalhe .bloco li strong { color: var(--ink); }
+  .fase-detalhe .fonte {
+    margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-size: .78rem; color: var(--ink-3);
+  }
+  .btn-fonte {
+    background: var(--accent); color: #fff; border: none; border-radius: 999px;
+    padding: 5px 14px; font-size: .78rem; font-weight: 600; text-decoration: none;
+    white-space: nowrap; display: inline-block;
+  }
+  .btn-fonte:hover { opacity: .9; }
+  /* [Alteração] Autor: Junior | Data/Hora: 13/10/2026 14:59
+     verde = ler documento; âmbar (mesmo tom do chip "Em andamento") = qualquer botão
+     de checklist, seja pra ler ou pra responder. */
+  .btn-fonte.btn-checklist { background: var(--acao); color: var(--acao-ink); }
+  /* [Alteração] Autor: Junior | Data/Hora: 13/10/2026 16:19
+     cor pelo estado do checklist no Web App (planilha: abas Respostas e Acessos).
+     data-estado é preenchido ao abrir a página, pelo fetch de <URL do Web App>?status=1
+     (script no fim do arquivo); sem resposta, o botão fica no âmbar padrão. */
+  .btn-fonte.btn-checklist[data-estado="nunca"] { background: var(--chk-nunca); color: var(--acao-ink); }
+  .btn-fonte.btn-checklist[data-estado="aberto"] { background: var(--acao); color: var(--acao-ink); }
+  .btn-fonte.btn-checklist[data-estado="enviado"] { background: var(--chk-enviado); color: var(--acao-ink); }
+
+  .brand { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 24px; }
+  .brand svg { width: 64px; height: 64px; flex-shrink: 0; }
+  .brand span { font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-size: 1.9rem; letter-spacing: .02em; color: var(--ink); }
+
+  .destaque {
+    background: var(--accent-soft); border: 1px solid transparent; border-radius: 8px;
+    padding: 18px 20px; display: flex; flex-wrap: wrap; align-items: center;
+    justify-content: space-between; gap: 12px 20px;
+  }
+  .destaque .texto { flex: 1 1 100%; }
+  .destaque .texto strong { display: block; color: var(--ink); font-size: 1rem; margin-bottom: 4px; }
+  .destaque .texto span { color: var(--ink-2); font-size: .92rem; text-align: justify; display: block; }
+  .destaque .botao {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 10px 18px; font-size: .88rem; font-weight: 600; text-decoration: none;
+    white-space: nowrap; display: inline-block;
+  }
+
+  .mes-detalhe { margin-top: 18px; }
+  .mes-detalhe h4 { font-size: .92rem; font-weight: 700; color: var(--ink); margin: 0 0 8px; }
+  .mes-detalhe h4 span { font-weight: 400; color: var(--ink-2); font-size: .84rem; }
+  .tabela-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  th, td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: none; }
+  th { font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  td { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  td:first-child { color: var(--ink); font-weight: 600; }
+  .obs { font-size: .82rem; color: var(--ink-3); margin-top: 8px; max-width: 70ch; }
+  tr.linha-total td { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+  tr.linha-total td:first-child { color: var(--accent); }
+
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: .82rem; }
+
+  /* [Alteração] Autor: vcj81 | Data/Hora: 10/08/2026 09:05
+     window.prompt() não funciona aqui: o Artifact roda num iframe sandboxed sem o
+     atributo 'allow-modals', então o navegador ignora silenciosamente qualquer
+     alert/confirm/prompt nativo. Substituído por um modal HTML próprio (mesmo padrão
+     visual do resto do painel), que não depende de diálogo nativo do navegador. */
+  .modal-aprovacao {
+    position: fixed; inset: 0; background: rgba(20, 26, 24, .55);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 10;
+  }
+  .modal-aprovacao.aberto { display: flex; }
+  .modal-aprovacao .caixa {
+    background: var(--surface); border-radius: 10px; padding: 24px; max-width: 360px; width: 100%;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  }
+  .modal-aprovacao h3 { margin: 0 0 6px; }
+  .modal-aprovacao p { color: var(--ink-2); font-size: .88rem; margin: 0 0 14px; }
+  .modal-aprovacao input {
+    width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink); margin-bottom: 12px;
+  }
+  .modal-aprovacao .acoes { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-aprovacao .cancelar {
+    background: transparent; border: 1px solid var(--line); color: var(--ink-2);
+    border-radius: 8px; padding: 8px 14px; font-size: .86rem; cursor: pointer;
+  }
+  .modal-aprovacao .confirmar {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 8px 14px; font-size: .86rem; font-weight: 600; cursor: pointer;
+  }
+  .bloco-confirmacao p { color: var(--ink-2); font-size: .86rem; margin: 0 0 8px; }
+  .link-whatsapp {
+    display: block; text-align: center; text-decoration: none; margin-bottom: 12px;
+    background: #25d366; color: #fff;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="2" y="2" width="96" height="96" rx="22" fill="#14127A"/>
+        <circle cx="50" cy="53" r="40" fill="#FFFFFF"/>
+        <path d="M50 82 C38 80 30 70 30 58 C40 64 46 70 50 82 Z" fill="#4CAF50"/>
+        <path d="M50 82 C62 80 70 70 70 58 C60 64 54 70 50 82 Z" fill="#4CAF50"/>
+        <path d="M50 84 C43 80 38 72 38 63 C46 67 50 74 50 84 Z" fill="#3D9140"/>
+        <path d="M50 84 C57 80 62 72 62 63 C54 67 50 74 50 84 Z" fill="#3D9140"/>
+        <path d="M27 55 C24 48 27 40 33 38 C31 45 32 52 37 58 C33 60 29 59 27 55 Z" fill="#E8C39E"/>
+        <path d="M73 55 C76 48 73 40 67 38 C69 45 68 52 63 58 C67 60 71 59 73 55 Z" fill="#E8C39E"/>
+        <g fill="#F5C400">
+          <ellipse cx="50" cy="24" rx="6" ry="11" transform="rotate(0 50 38)"/>
+          <ellipse cx="50" cy="24" rx="6" ry="11" transform="rotate(45 50 38)"/>
+          <ellipse cx="50" cy="24" rx="6" ry="11" transform="rotate(90 50 38)"/>
+          <ellipse cx="50" cy="24" rx="6" ry="11" transform="rotate(135 50 38)"/>
+          <ellipse cx="50" cy="24" rx="6" ry="11" transform="rotate(180 50 38)"/>
+          <ellipse cx="50" cy="24" rx="6" ry="11" transform="rotate(225 50 38)"/>
+          <ellipse cx="50" cy="24" rx="6" ry="11" transform="rotate(270 50 38)"/>
+          <ellipse cx="50" cy="24" rx="6" ry="11" transform="rotate(315 50 38)"/>
+        </g>
+        <circle cx="50" cy="38" r="8.5" fill="#14127A"/>
+        <line x1="50" y1="38" x2="50" y2="33" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="50" y1="38" x2="54" y2="40.5" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="50" cy="38" r="1" fill="#FFFFFF"/>
+      </svg>
+      <span>SIGA</span>
+    </div>
+    <div class="eyebrow">Acompanhamento de projeto · APAE</div>
+    <h1>SIGA — Sistema Integrado de Gestão de Agendas</h1>
+    <p class="sub">Sistema que sincroniza as agendas de alunos, profissionais de saúde e recursos
+    (salas e equipamentos) em um único ponto, eliminando os conflitos das planilhas manuais.</p>
+    <!-- [Alteração] Autor: vcj81 | Data/Hora: 27/10/2026 15:56
+         Status do topo atualizado com os dias 15, 17, 19, 21, 23, 24 e 26/10; Fase 6 segue em andamento. -->
+    <p class="stamp">Atualizado em 27/10/2026 · Início dos trabalhos em 13/07/2026</p>
+    <div class="destaque" style="margin-top:16px;">
+      <div class="texto">
+        <strong>Status do projeto</strong>
+        <span>Fases 0 a 5 concluídas e aprovadas; Fase 6 em andamento. Últimos dias trabalhados registrados: 15/10 (quinta), das 18:30 às 22:30; 17/10 (sábado), das 09:00 às 13:00; 19/10 (segunda), 21/10 (quarta) e 23/10 (sexta), das 18:15 às 22:15; 24/10 (sábado), das 08:30 às 12:30; e 26/10 (segunda), das 18:30 às 22:30 — 4h por dia.</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 27/10/2026 15:56
+       Fase 6 ganha 7 dias (15 a 26/10) → KPI "Dias trabalhados" sobe de 37 para 44; a nota
+       só soma as fases, sem repetir os dias já contados nos 13. -->
+  <div class="kpis">
+    <div class="kpi">
+      <div class="label">Dias trabalhados</div>
+      <div class="value">44</div>
+      <div class="note">13 a 17/07 + 23/07/2026 + 6 (Fase 4) + 3 (Fase 5) + 29 (Fase 6)</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Fases aprovadas</div>
+      <div class="value">6 de 10</div>
+      <div class="note">Fases 0, 1, 2, 3, 4 e 5</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Entidades modeladas</div>
+      <div class="value">13</div>
+      <div class="note">Diagrama entidade-relacionamento (Fase 2)</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Fluxos mapeados</div>
+      <div class="value">3</div>
+      <div class="note">Agendamento, desligamento, falta (Fase 3)</div>
+    </div>
+  </div>
+
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 24/08/2026 09:34
+       Trilha revertida pro padrão da Fase 4 em andamento: 6º marcador volta a vazio
+       (não "active") — o "em andamento" fica só no chip da fase (linha ~348), não na
+       trilha, mantendo o mesmo padrão usado quando a Fase 4 estava em andamento. -->
+  <h2>Fases do projeto</h2>
+  <div class="track" aria-hidden="true">
+    <span class="done"></span><span class="done"></span><span class="done"></span>
+    <span class="done"></span><span class="done"></span><span class="done"></span>
+    <span></span><span></span><span></span><span></span>
+  </div>
+  <p class="track-caption">Fases 0 a 5 aprovadas · Fases 6 a 9 entram no painel conforme forem aprovadas — cada fase só ganha seção detalhada aqui após aprovação explícita.</p>
+
+  <div class="fase"><span class="num">0</span><span class="nome">Enquadramento <span class="entrega">Documento de escopo e metodologia</span></span><span class="chip ok">Concluída</span></div>
+  <div class="fase"><span class="num">1</span><span class="nome">Levantamento de requisitos <span class="entrega">Regras de negócio documentadas</span></span><span class="chip ok">Concluída</span></div>
+  <div class="fase"><span class="num">2</span><span class="nome">Modelagem de dados <span class="entrega">Diagrama de entidades e relacionamentos (DER)</span></span><span class="chip ok">Concluída</span></div>
+  <div class="fase"><span class="num">3</span><span class="nome">Mapeamento de fluxos <span class="entrega">Fluxogramas BPMN dos processos de agendamento</span></span><span class="chip ok">Concluída</span></div>
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 17/08/2026 15:13
+       Fase 4 aprovada: chip "wait"/Planejada vira "ok"/Concluída. -->
+  <div class="fase"><span class="num">4</span><span class="nome">Esboço de interface <span class="entrega">Wireframes das telas principais</span></span><span class="chip ok">Concluída</span></div>
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 24/08/2026 09:29
+       Fase 4 concluída → Fase 5 vira "Em andamento" (chip "now") automaticamente,
+       a pedido: assim que uma fase é marcada concluída, a próxima sai de
+       "Planejada" e passa pra "Em andamento" no chip da lista. -->
+  <div class="fase"><span class="num">5</span><span class="nome">Arquitetura e stack <span class="entrega">Registros de decisão de arquitetura (ADRs)</span></span><span class="chip ok">Concluída</span></div>
+  <div class="fase"><span class="num">6</span><span class="nome">Prova de conceito (POC) <span class="entrega">Validador de conflitos funcional</span></span><span class="chip now">Em andamento</span></div>
+  <div class="fase"><span class="num">7</span><span class="nome">Desenvolvimento iterativo <span class="entrega">Funcionalidades completas, por sprint</span></span><span class="chip wait">Planejada</span></div>
+  <div class="fase"><span class="num">8</span><span class="nome">Testes e validação <span class="entrega">Testes automatizados e com usuários reais</span></span><span class="chip wait">Planejada</span></div>
+  <div class="fase"><span class="num">9</span><span class="nome">Entrega final <span class="entrega">Sistema em produção, documentação e treinamento</span></span><span class="chip wait">Planejada</span></div>
+
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 14/10/2026 11:49
+       "Detalhe por fase" movido pra logo após a lista de fases, antes da seção "Dias
+       trabalhados e carga horária" (antes ficava depois da Linha do
+       tempo de aprovações), a pedido — mesmo conteúdo, só a posição mudou.
+       Regra das fontes mantida: cada linha "Fonte" é botão (.btn-fonte) pro documento
+       completo da fase; próximas fases aprovadas seguem o mesmo padrão. -->
+  <h2>Detalhe por fase</h2>
+
+  <div class="fase-detalhe">
+    <header>
+      <div class="titulo-fase"><span class="num">Fase 0</span><h3>Enquadramento</h3></div>
+      <div class="header-actions">
+        <span class="chip ok">Concluída</span>
+        <button class="btn-aprovar" type="button" data-fase="0" data-nome="Enquadramento">Aprovar</button>
+      </div>
+    </header>
+    <p class="entregavel">Entregável: documento de escopo e metodologia de desenvolvimento.</p>
+    <div class="grid2">
+      <div class="bloco">
+        <p><strong>Objetivo do sistema</strong></p>
+        <p>Sincronizar três agendas num único ponto: do aluno, do profissional e da
+        disponibilidade de recursos (sala, equipamento) — um problema de otimização
+        combinatória com restrições, camuflado de sistema de agenda.</p>
+      </div>
+      <div class="bloco">
+        <p><strong>Stack e princípios definidos</strong></p>
+        <ul>
+          <li>Backend Python 3.10+ / FastAPI · banco SQLite + SQLAlchemy 2.0 · frontend React + TypeScript + FullCalendar</li>
+          <li>Discovery antes de código; POC pequeno e descartável; validação contínua com usuários reais; privacidade por padrão (LGPD)</li>
+        </ul>
+      </div>
+    </div>
+    <p class="fonte"><span>Fonte:</span> <a class="btn-fonte" href="https://claude.ai/code/artifact/5bb78a06-fd3b-40ad-8370-380725e53f11" target="_blank" rel="noopener">Ler documento completo</a></p>
+  </div>
+
+  <div class="fase-detalhe">
+    <header>
+      <div class="titulo-fase"><span class="num">Fase 1</span><h3>Levantamento de requisitos</h3></div>
+      <div class="header-actions">
+        <span class="chip ok">Concluída</span>
+        <button class="btn-aprovar" type="button" data-fase="1" data-nome="Levantamento de requisitos">Aprovar</button>
+      </div>
+    </header>
+    <p class="entregavel">Entregável: regras de negócio documentadas a partir da análise das planilhas reais e de entrevistas com a coordenação.</p>
+    <div class="grid2">
+      <div class="bloco">
+        <p><strong>Achado central</strong></p>
+        <p>Hoje a APAE mantém duas planilhas manuais da mesma grade de horários (por turma e
+        por profissional), sem fonte única de verdade — o maior ponto de dor que o SIGA resolve.</p>
+      </div>
+      <!-- [Alteração] Autor: vcj81 | Data/Hora: 10/08/2026 17:05
+           Título "Regras de negócio confirmadas" trocado pra "Regras de negócio
+           mapeadas", a pedido. -->
+      <div class="bloco">
+        <p><strong>Regras de negócio mapeadas</strong></p>
+        <ul>
+          <li><strong>Conflito:</strong> profissional e aluno não podem ter 2 atendimentos sobrepostos; sala é exclusiva por turno</li>
+          <li><strong>Desligamento:</strong> 6 anos (Estimulação Precoce) ou defasagem sanada em avaliação trimestral; 3 faltas consecutivas aciona a Assistente Social (retorno em 15–20 dias)</li>
+          <li><strong>Fora de escopo:</strong> integração com SISREG, fila de espera e programas SPE/SEVIL/PROEP</li>
+        </ul>
+      </div>
+    </div>
+    <p class="fonte"><span>Fonte:</span> <a class="btn-fonte" href="https://claude.ai/code/artifact/b0cf9aa1-90d7-4ac6-b65a-72db3337bf66" target="_blank" rel="noopener">Ler documento completo</a></p>
+  </div>
+
+  <div class="fase-detalhe">
+    <header>
+      <div class="titulo-fase"><span class="num">Fase 2</span><h3>Modelagem de dados</h3></div>
+      <div class="header-actions">
+        <span class="chip ok">Concluída</span>
+        <button class="btn-aprovar" type="button" data-fase="2" data-nome="Modelagem de dados">Aprovar</button>
+      </div>
+    </header>
+    <p class="entregavel">Entregável: diagrama de entidades e relacionamentos (DER).</p>
+    <div class="grid2">
+      <div class="bloco">
+        <p><strong>13 entidades modeladas</strong></p>
+        <p>Aluno, Turma, Profissional, Especialidade, Sala, Equipamento, Atendimento,
+        AtendimentoAluno, Falta, Desligamento, AvaliacaoTrimestral, ProgramaFinanciamento
+        e VersaoAgenda (suporta rascunho vs. vigente).</p>
+      </div>
+      <div class="bloco">
+        <p><strong>Constraints derivadas das regras de negócio</strong></p>
+        <ul>
+          <li>Unicidade de horário por profissional e por aluno (versão vigente da agenda)</li>
+          <li>Validação de capacidade de sala cruzando sala, dia e turno</li>
+          <li>3 questões em aberto levadas para validação com a APAE (classificação clínica, identificador único de aluno, capacidade de grupo)</li>
+        </ul>
+      </div>
+    </div>
+    <p class="fonte"><span>Fonte:</span> <a class="btn-fonte" href="https://claude.ai/code/artifact/07275fe0-c9b2-4345-aaf7-ad31a1766ed4" target="_blank" rel="noopener">Ler documento completo</a></p>
+  </div>
+
+  <div class="fase-detalhe">
+    <header>
+      <div class="titulo-fase"><span class="num">Fase 3</span><h3>Mapeamento de fluxos</h3></div>
+      <div class="header-actions">
+        <span class="chip ok">Concluída</span>
+        <button class="btn-aprovar" type="button" data-fase="3" data-nome="Mapeamento de fluxos">Aprovar</button>
+      </div>
+    </header>
+    <p class="entregavel">Entregável: fluxogramas BPMN dos processos de agendamento, desligamento e falta/remanejamento.</p>
+    <div class="grid2">
+      <div class="bloco">
+        <p><strong>3 fluxos mapeados</strong></p>
+        <ul>
+          <li><strong>Agendamento:</strong> validação de conflito de profissional, aluno e sala antes de confirmar</li>
+          <li><strong>Desligamento:</strong> por idade, defasagem sanada ou faltas — com parecer da Assistente Social</li>
+          <li><strong>Falta/remanejamento:</strong> aviso à família e sugestão de profissional com janela livre</li>
+        </ul>
+      </div>
+      <!-- [Alteração] Autor: vcj81 | Data/Hora: 10/08/2026 17:05
+           Título "Checklist validado com a coordenação (14/07/2026)" simplificado
+           pra "Checklist", a pedido. -->
+      <div class="bloco">
+        <p><strong>Checklist</strong></p>
+        <ul>
+          <li>Sugestão automática de profissional livre: aceita, mas não obrigatória no MVP</li>
+          <li>Cancelamento de desligamento em análise exige justificativa formal</li>
+          <li>Sem prioridade entre motivos de desligamento coincidentes — vale o que ocorrer primeiro</li>
+        </ul>
+      </div>
+    </div>
+    <!-- [Alteração] Autor: Junior | Data/Hora: 13/10/2026 16:19
+         Checklist da Fase 3 volta a ser respondido, agora pelo Web App (?checklist=fase3),
+         pra registrar quem respondeu e quando. Substitui o link de leitura do checklist. -->
+    <p class="fonte"><span>Fonte:</span> <a class="btn-fonte" href="https://claude.ai/code/artifact/3499e2d9-c015-4ec6-be0a-885020413d26" target="_blank" rel="noopener">Ler fluxos completos</a> <a class="btn-fonte btn-checklist" data-checklist="fase3" href="https://script.google.com/macros/s/AKfycbxhOdZe6UYjEbmHWLTqIhxsGbKpK16nMGQlio0tzr61mCUjLSYK203fappQHb-eM_-W/exec?checklist=fase3" target="_blank" rel="noopener">Responder checklist</a></p>
+  </div>
+
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 17/08/2026 15:13
+       Fase 4 aprovada: bloco "Em andamento" (destaque) vira seção de detalhe completa
+       (mesmo padrão das fases 0 a 3), e "Próximo passo" passa a descrever a Fase 5. -->
+  <div class="fase-detalhe">
+    <header>
+      <div class="titulo-fase"><span class="num">Fase 4</span><h3>Esboço de interface</h3></div>
+      <div class="header-actions">
+        <span class="chip ok">Concluída</span>
+        <button class="btn-aprovar" type="button" data-fase="4" data-nome="Esboço de interface">Aprovar</button>
+      </div>
+    </header>
+    <p class="entregavel">Entregável: wireframes de baixa fidelidade das três telas principais (foco em layout e estado, não em estilo visual).</p>
+    <div class="grid2">
+      <div class="bloco">
+        <p><strong>3 telas desenhadas</strong></p>
+        <ul>
+          <li><strong>Tela de Agenda:</strong> visão por Turma e por Profissional alternadas no mesmo grid, acabando com a divergência entre as duas planilhas atuais</li>
+          <li><strong>Tela de Conflito:</strong> modal aberto durante o agendamento quando a validação encontra choque de profissional, aluno ou sala</li>
+          <li><strong>Tela de Desligamento:</strong> lista + detalhe cobrindo os três motivos (idade, defasagem sanada, faltas), com justificativa obrigatória em cancelamento</li>
+        </ul>
+      </div>
+      <div class="bloco">
+        <p><strong>Checklist validado com a coordenação</strong></p>
+        <ul>
+          <li>Registro de falta pela célula da agenda: menu rápido, sem tela própria</li>
+          <li>Bloco de equipamento de 3h: célula única mesclada, não 6 slots</li>
+          <li>Rodapé de carga horária: apoio visual, não obrigatório no MVP</li>
+        </ul>
+      </div>
+    </div>
+    <!-- [Alteração] Autor: Junior | Data/Hora: 13/10/2026 17:23
+         "Responder checklist" passa a abrir o Web App do Apps Script (apps/checklist-gas),
+         que grava a resposta na planilha, envia e-mail com JSON e mostra a todos com o link.
+         Sem parâmetro na URL: fase4 é o checklist padrão do Web App. data-checklist="fase4"
+         liga o botão à cor do estado lida do ?status=1 (script no fim do arquivo). -->
+    <p class="fonte"><span>Fonte:</span> <a class="btn-fonte" href="https://claude.ai/code/artifact/2b63bd1a-73d9-4669-84f4-40f6d22c5be1" target="_blank" rel="noopener">Ler wireframes completos</a> <a class="btn-fonte btn-checklist" data-checklist="fase4" href="https://script.google.com/macros/s/AKfycbxhOdZe6UYjEbmHWLTqIhxsGbKpK16nMGQlio0tzr61mCUjLSYK203fappQHb-eM_-W/exec" target="_blank" rel="noopener">Responder checklist</a></p>
+  </div>
+
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 31/08/2026 09:20
+       Fase 5 aprovada: bloco "Em andamento" (destaque) vira seção de detalhe completa
+       (mesmo padrão das fases 0 a 4), e "Próximo passo" passa a descrever a Fase 6. -->
+  <div class="fase-detalhe">
+    <header>
+      <div class="titulo-fase"><span class="num">Fase 5</span><h3>Arquitetura e stack</h3></div>
+      <div class="header-actions">
+        <span class="chip ok">Concluída</span>
+        <button class="btn-aprovar" type="button" data-fase="5" data-nome="Arquitetura e stack">Aprovar</button>
+      </div>
+    </header>
+    <p class="entregavel">Entregável: registros de decisão de arquitetura (ADRs) cobrindo stack de backend, banco de dados, frontend, validação de conflitos, modelo de agenda, implantação e autenticação.</p>
+    <div class="grid2">
+      <div class="bloco">
+        <p><strong>9 ADRs registrados</strong></p>
+        <ul>
+          <li><strong>Backend/dados:</strong> monorepo, FastAPI (Python), SQLite + SQLAlchemy 2.0 + Alembic</li>
+          <li><strong>Frontend:</strong> React 18 + TypeScript + FullCalendar, build com Vite</li>
+          <li><strong>Domínio:</strong> validação de conflitos no backend com dupla defesa; agenda como "semana modelo" versionada</li>
+        </ul>
+      </div>
+      <div class="bloco">
+        <p><strong>Questões em aberto pra validar com a coordenação</strong></p>
+        <ul>
+          <li>Hospedagem: servidor local na APAE vs. VPS nacional (define backup e viabilidade de app mobile)</li>
+          <li>Licença do FullCalendar Premium (visão por profissional) vs. fallback gratuito</li>
+          <li>Responsável operacional pelo servidor e conta institucional pra login</li>
+        </ul>
+      </div>
+    </div>
+    <!-- [Alteração] Autor: vcj81 | Data/Hora: 14/10/2026 16:07
+         Checklist da Fase 5 (hospedagem, acesso de fora, manutenção, login e perfis): as
+         "Questões em aberto" acima viram perguntas respondíveis no Web App (?checklist=fase5). -->
+    <p class="fonte"><span>Fonte:</span> <a class="btn-fonte" href="https://claude.ai/code/artifact/b328548a-5c77-44fc-ac57-90a3d273bd8f" target="_blank" rel="noopener">Ler ADRs completos</a> <a class="btn-fonte btn-checklist" data-checklist="fase5" href="https://script.google.com/macros/s/AKfycbxhOdZe6UYjEbmHWLTqIhxsGbKpK16nMGQlio0tzr61mCUjLSYK203fappQHb-eM_-W/exec?checklist=fase5" target="_blank" rel="noopener">Responder checklist</a></p>
+  </div>
+
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 27/10/2026 15:56
+       "Em andamento" movido pra logo após o Detalhe por fase, antes de "Dias trabalhados
+       e carga horária" (antes ficava depois da Linha do tempo de aprovações), a pedido —
+       mesmo conteúdo, só a posição mudou. Título segue a regra de 10/08/2026: fase com
+       linha própria na tabela "Dias trabalhados" aparece aqui como "Em andamento". -->
+  <h2>Em andamento</h2>
+  <div class="destaque">
+    <div class="texto">
+      <strong>Fase 6 — Prova de conceito (POC)</strong>
+      <span>Setup do backend (`apps/api`: FastAPI + SQLAlchemy + Alembic + Docker Compose) e
+      implementação do validador de conflitos definido no ADR-005, testado com as grades reais
+      de 2026. Ao final, revisita o risco da camada de adaptação entre FullCalendar e a semana
+      modelo (ADR-004/006). Entra nesta seção com detalhamento completo só após aprovação formal
+      do responsável do projeto, seguindo a mesma regra aplicada às fases anteriores.</span>
+    </div>
+    <!-- [Alteração] Autor: vcj81 | Data/Hora: 14/10/2026 16:07
+         Checklist da Fase 6 (regras do validador de conflitos). Não fere a regra "só texto"
+         desta seção: é pedido de resposta ao cliente, não link pra material da fase. -->
+    <a class="btn-fonte btn-checklist" data-checklist="fase6" href="https://script.google.com/macros/s/AKfycbxhOdZe6UYjEbmHWLTqIhxsGbKpK16nMGQlio0tzr61mCUjLSYK203fappQHb-eM_-W/exec?checklist=fase6" target="_blank" rel="noopener">Responder checklist</a>
+    <!-- [Alteração] Autor: vcj81 | Data/Hora: 28/10/2026 15:42
+         2ª rodada do checklist da Fase 6 (?checklist=fase6b): retorno das respostas de
+         27/10/2026. data-rotulo-enviado dá o texto do botão quando já respondido, pra não
+         ficar igual ao "Responder checklist novamente" do botão ao lado. -->
+    <a class="btn-fonte btn-checklist" data-checklist="fase6b" data-rotulo-enviado="Responder 2ª rodada novamente" href="https://script.google.com/macros/s/AKfycbxhOdZe6UYjEbmHWLTqIhxsGbKpK16nMGQlio0tzr61mCUjLSYK203fappQHb-eM_-W/exec?checklist=fase6b" target="_blank" rel="noopener">Responder 2ª rodada</a>
+  </div>
+
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 27/10/2026 15:56
+       Fase 6 passa de 22 para 29 dias (116 h) com os 7 dias de 15 a 26/10; total
+       recalculado para 44 dias / 200 h. Regra mantida: toda fase com dias/horas lançados
+       entra como linha antes do total (linha-total), recalculado no fim. -->
+  <h2>Dias trabalhados e carga horária</h2>
+  <div class="tabela-wrap">
+    <table>
+      <tr><th>Fase</th><th>Dias trabalhados</th><th>Horas</th></tr>
+      <tr><td>Fase 0 — Enquadramento</td><td>1</td><td>8 h</td></tr>
+      <tr><td>Fase 1 — Levantamento de requisitos</td><td>1,5</td><td>12 h</td></tr>
+      <tr><td>Fase 2 — Modelagem de dados</td><td>1</td><td>8 h</td></tr>
+      <tr><td>Fase 3 — Mapeamento de fluxos</td><td>2,5</td><td>20 h</td></tr>
+      <tr><td>Fase 4 — Esboço de interface</td><td>6</td><td>24 h</td></tr>
+      <tr><td>Fase 5 — Arquitetura e stack</td><td>3</td><td>12 h</td></tr>
+      <tr><td>Fase 6 — Prova de conceito (POC)</td><td>29</td><td>116 h</td></tr>
+      <tr class="linha-total"><td>Total (fases 0 a 6)</td><td>44</td><td>200 h</td></tr>
+    </table>
+  </div>
+
+
+  <!-- [Alteração] Autor: ciaca-jr | Data/Hora: 14/09/2026 09:50
+       Tabela "Horas trabalhadas por mês" eliminada, a pedido — a coluna "Horas"
+       entrou direto na tabela de detalhamento de cada mês (linha a linha) e cada
+       tabela de mês ganhou linha de total (linha-total) no rodapé, substituindo
+       o resumo que ficava no cabeçalho h4. Regra pra próximas atualizações: todo
+       dia novo entra como linha antes da linha-total do mês correspondente; a
+       linha-total é recalculada a cada dia lançado. -->
+  <div class="mes-detalhe">
+    <h4>Julho/2026 <span>— expediente 07:45–11:45 e 13:00–17:00 (8 h/dia)</span></h4>
+    <div class="tabela-wrap">
+      <table>
+        <tr><th>Data</th><th>Dia</th><th>Horário</th><th>Horas</th></tr>
+        <tr><td>13/07</td><td>segunda</td><td>07:45–11:45 e 13:00–17:00</td><td>8 h</td></tr>
+        <tr><td>14/07</td><td>terça</td><td>07:45–11:45 e 13:00–17:00</td><td>8 h</td></tr>
+        <tr><td>15/07</td><td>quarta</td><td>07:45–11:45 e 13:00–17:00</td><td>8 h</td></tr>
+        <tr><td>16/07</td><td>quinta</td><td>07:45–11:45 e 13:00–17:00</td><td>8 h</td></tr>
+        <tr><td>17/07</td><td>sexta</td><td>07:45–11:45 e 13:00–17:00</td><td>8 h</td></tr>
+        <tr><td>23/07</td><td>quinta</td><td>07:45–11:45 e 13:00–17:00</td><td>8 h</td></tr>
+        <tr class="linha-total"><td colspan="2">Total Julho/2026</td><td>6 dias</td><td>48 h</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- [Alteração] Autor: ciaca-jr | Data/Hora: 14/09/2026 10:10
+       Correção de dias lançados: 31/08 seg 17:30–21:30 (4 h) entrou no mês de
+       Agosto — dia trabalhado que faltava lançar, ainda dentro da Fase 6. E 09/09
+       foi removido do mês de Setembro — dia lançado por engano, não foi trabalhado.
+       Total geral do projeto (22 dias / 112 h) não muda, porque uma entrada some e
+       a outra aparece, mas os totais de cada mês (e a nota do KPI) refletem a troca. -->
+  <div class="mes-detalhe">
+    <h4>Agosto/2026</h4>
+    <div class="tabela-wrap">
+      <table>
+        <tr><th>Data</th><th>Dia</th><th>Horário</th><th>Horas</th></tr>
+        <tr><td>05/08</td><td>quarta</td><td>18:00–22:00</td><td>4 h</td></tr>
+        <tr><td>07/08</td><td>sexta</td><td>17:30–21:30</td><td>4 h</td></tr>
+        <tr><td>08/08</td><td>sábado</td><td>08:00–12:00</td><td>4 h</td></tr>
+        <tr><td>10/08</td><td>segunda</td><td>18:30–22:30</td><td>4 h</td></tr>
+        <tr><td>12/08</td><td>quarta</td><td>18:30–22:30</td><td>4 h</td></tr>
+        <tr><td>15/08</td><td>sábado</td><td>08:30–12:30</td><td>4 h</td></tr>
+        <tr><td>17/08</td><td>segunda</td><td>18:00–22:00</td><td>4 h</td></tr>
+        <tr><td>19/08</td><td>quarta</td><td>18:00–22:00</td><td>4 h</td></tr>
+        <tr><td>20/08</td><td>quinta</td><td>18:00–22:00</td><td>4 h</td></tr>
+        <tr><td>24/08</td><td>segunda</td><td>18:00–22:00</td><td>4 h</td></tr>
+        <tr><td>26/08</td><td>quarta</td><td>18:00–22:00</td><td>4 h</td></tr>
+        <tr><td>29/08</td><td>sábado</td><td>09:00–13:00</td><td>4 h</td></tr>
+        <tr><td>31/08</td><td>segunda</td><td>17:30–21:30</td><td>4 h</td></tr>
+        <tr class="linha-total"><td colspan="2">Total Agosto/2026</td><td>13 dias</td><td>52 h</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- [Alteração] Autor: Junior | Data/Hora: 01/10/2026 15:18
+       Lançados 23/09, 25/09, 28/09 e 30/09 (18:15–22:15, 4 h cada) antes da
+       linha-total; total do mês sobe de 9 dias / 36 h para 13 dias / 52 h. -->
+  <div class="mes-detalhe">
+    <h4>Setembro/2026</h4>
+    <div class="tabela-wrap">
+      <table>
+        <tr><th>Data</th><th>Dia</th><th>Horário</th><th>Horas</th></tr>
+        <tr><td>02/09</td><td>quarta</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>04/09</td><td>sexta</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>08/09</td><td>terça</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>10/09</td><td>quinta</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>12/09</td><td>sábado</td><td>08:30–12:30</td><td>4 h</td></tr>
+        <tr><td>14/09</td><td>segunda</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>16/09</td><td>quarta</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>18/09</td><td>sexta</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>21/09</td><td>segunda</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>23/09</td><td>quarta</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>25/09</td><td>sexta</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>28/09</td><td>segunda</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>30/09</td><td>quarta</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr class="linha-total"><td colspan="2">Total Setembro/2026</td><td>13 dias</td><td>52 h</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 27/10/2026 15:56
+       15/10, 17/10, 19/10, 21/10, 23/10, 24/10 e 26/10 (4 h cada, Fase 6) entram antes
+       da linha-total; total do mês sobe de 5 dias / 20 h para 12 dias / 48 h. -->
+  <div class="mes-detalhe">
+    <h4>Outubro/2026</h4>
+    <div class="tabela-wrap">
+      <table>
+        <tr><th>Data</th><th>Dia</th><th>Horário</th><th>Horas</th></tr>
+        <tr><td>02/10</td><td>sexta</td><td>18:30–22:30</td><td>4 h</td></tr>
+        <tr><td>05/10</td><td>segunda</td><td>18:30–22:30</td><td>4 h</td></tr>
+        <tr><td>07/10</td><td>quarta</td><td>18:30–22:30</td><td>4 h</td></tr>
+        <tr><td>09/10</td><td>sexta</td><td>18:30–22:30</td><td>4 h</td></tr>
+        <tr><td>13/10</td><td>terça</td><td>17:30–21:30</td><td>4 h</td></tr>
+        <tr><td>15/10</td><td>quinta</td><td>18:30–22:30</td><td>4 h</td></tr>
+        <tr><td>17/10</td><td>sábado</td><td>09:00–13:00</td><td>4 h</td></tr>
+        <tr><td>19/10</td><td>segunda</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>21/10</td><td>quarta</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>23/10</td><td>sexta</td><td>18:15–22:15</td><td>4 h</td></tr>
+        <tr><td>24/10</td><td>sábado</td><td>08:30–12:30</td><td>4 h</td></tr>
+        <tr><td>26/10</td><td>segunda</td><td>18:30–22:30</td><td>4 h</td></tr>
+        <tr class="linha-total"><td colspan="2">Total Outubro/2026</td><td>12 dias</td><td>48 h</td></tr>
+      </table>
+    </div>
+  </div>
+
+   <!-- [Alteração] Autor: ciaca-jr | Data/Hora: 14/09/2026 10:20
+       Bloco "Linha do tempo de aprovações" movido pra depois da tabela "Dias
+       trabalhados e carga horária por fase concluída" (antes ficava logo após a
+       lista de fases), a pedido — mesmo conteúdo, só a posição mudou. -->
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 10/08/2026 10:05
+       Capability 'downloads' foi descartada: a plataforma não permite artifact público
+       + downloads ao mesmo tempo, e este link precisa continuar público (é o que o
+       cliente já usa hoje pra acompanhar o projeto). Sem conector Google Sheets na conta
+       e sem backend próprio, não existe forma automática de tirar o dado do navegador
+       do cliente — o registro fica em localStorage (sobrevive a reload) e o e-mail
+       mailto (abaixo, no modal de aprovação) é o canal real que chega até a equipe;
+       quem grava no repositório/painel definitivo continua sendo o dono do projeto. -->
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 10/08/2026 11:10
+       Removido o registro fixo da Fase 0 (aprovação via WhatsApp) a pedido — volta ao
+       estado sem aprovações registradas na timeline. -->
+  <!-- [Alteração] Autor: Junior | Data/Hora: 13/10/2026 14:41
+       Fases 0 a 5 aprovadas pelo cliente: registradas como aprovações fixas no
+       script (APROVACOES_REGISTRADAS), visíveis pra qualquer pessoa/dispositivo que
+       abrir o link — o localStorage do navegador do cliente não chega até a equipe. -->
+  <h2>Linha do tempo de aprovações</h2>
+  <div class="timeline-wrap">
+    <p class="timeline-vazio" id="timeline-vazio">Nenhuma aprovação registrada ainda — use o botão "Aprovar" em cada fase concluída, acima.</p>
+    <ul class="timeline-lista" id="timeline-lista"></ul>
+  </div>
+  <p class="obs" style="max-width:none;">Aprovações confirmadas pela equipe do SIGA aparecem aqui pra todos. Ao aprovar uma nova fase, envie a confirmação por WhatsApp — é o canal que chega até a equipe, que registra a aprovação neste painel.</p>
+
+  <!-- [Alteração] Autor: vcj81 | Data/Hora: 10/08/2026 10:35
+       Modal de aprovação (substitui window.prompt, bloqueado pelo sandbox do Artifact).
+       mailto: falhou porque não é protocolo http/https — o sandbox bloqueia essa
+       navegação mesmo em clique direto ("allow-popups permission is not set"). Link
+       https://wa.me/... é http(s) normal, então passa pelo mecanismo de abertura de
+       link do próprio Artifact (clique real do usuário abre em nova aba pelo host) —
+       por isso o link de WhatsApp abaixo é um <a href> de verdade, nunca disparado
+       via JS. Não existe forma de enviar a mensagem sem esse clique: JS de dentro do
+       Artifact não tem API de disparo de WhatsApp nenhuma (isso exigiria WhatsApp
+       Cloud API + backend próprio, que o Artifact também não pode chamar por CSP).
+       Removidos nesta rodada: botão "Aprovar"→e-mail e "Copiar mensagem", a pedido —
+       fica só o caminho WhatsApp, que é o mais direto possível hoje. -->
+  <div class="modal-aprovacao" id="modal-aprovacao">
+    <div class="caixa">
+      <h3 id="modal-titulo">Aprovar fase</h3>
+      <p>Digite seu nome para confirmar a aprovação desta fase.</p>
+      <input type="text" id="modal-nome" placeholder="Seu nome" autocomplete="off">
+      <div class="bloco-confirmacao" id="modal-bloco-confirmacao" style="display:none;">
+        <p>Aprovação registrada. Clique abaixo pra abrir o WhatsApp já com a mensagem pronta — falta só apertar enviar lá dentro:</p>
+        <a class="confirmar link-whatsapp" id="link-whatsapp" target="_blank" rel="noopener">Enviar confirmação por WhatsApp</a>
+      </div>
+      <div class="acoes">
+        <button type="button" class="cancelar" id="modal-cancelar">Cancelar</button>
+        <button type="button" class="confirmar" id="modal-confirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Painel atualizado a cada avanço aprovado do projeto — este endereço sempre mostra a versão
+    mais recente. Cada fase só aparece detalhada aqui após aprovação explícita do responsável
+    do projeto; fases já trabalhadas tecnicamente, mas não aprovadas, ficam fora do painel até
+    a próxima rodada.
+  </footer>
+</div>
+
+<script>
+/* [Alteração] Autor: vcj81 | Data/Hora: 10/08/2026 10:20
+   Persistência real: a conta do cliente não tem conector Google Sheets (só Drive,
+   que não escreve planilha), e o Artifact não tem backend/SQLite — HTML/JS estático
+   dentro de um iframe sandboxed. localStorage guarda as aprovações e sobrevive a
+   reload da página (antes sumia).
+   window.prompt() e link mailto com target="_blank" foram testados e os dois foram
+   bloqueados pelo sandbox — o Artifact não deixa abrir diálogo nativo nem nova aba,
+   mesmo em clique direto do usuário ("sandboxed frame whose 'allow-popups' permission
+   is not set"). Por isso: modal HTML próprio (sem diálogo nativo) e, pra avisar a
+   equipe, uma caixa de texto com a mensagem pronta + botão "Copiar" via Clipboard API
+   (não é navegação, não esbarra no sandbox) — o cliente cola manualmente no e-mail/
+   WhatsApp dele por fora do Artifact. Login Google real (OAuth) continua impossível
+   aqui — sem chamada a domínio externo, sem backend pra validar token. Aprovação
+   "oficial" da fase continua exigindo comando explícito do dono do projeto (regra
+   no topo do arquivo); isto é confirmação + registro local. */
+(function () {
+  // Número de contato do SIGA no formato E.164 sem símbolos, exigido pelo wa.me
+  // (DDI 55 + DDD 47 + número, dígito 9 incluído).
+  var WHATSAPP_NUMERO = '5547984323332';
+  var CHAVE_LOCAL = 'siga_aprovacoes_v1';
+
+  // [Alteração] Autor: Junior | Data/Hora: 13/10/2026 14:41
+  // Aprovações confirmadas pelo cliente e registradas pela equipe — valem pra
+  // todos os visitantes. Datas = fechamento de cada fase no painel. Nova fase
+  // aprovada entra como mais uma linha aqui.
+  var APROVACOES_REGISTRADAS = [
+    { fase: '0', nomeFase: 'Enquadramento', detalhe: 'Aprovada pelo cliente · fase fechada em 23/07/2026' },
+    { fase: '1', nomeFase: 'Levantamento de requisitos', detalhe: 'Aprovada pelo cliente · fase fechada em 23/07/2026' },
+    { fase: '2', nomeFase: 'Modelagem de dados', detalhe: 'Aprovada pelo cliente · fase fechada em 23/07/2026' },
+    { fase: '3', nomeFase: 'Mapeamento de fluxos', detalhe: 'Aprovada pelo cliente · fase fechada em 23/07/2026' },
+    { fase: '4', nomeFase: 'Esboço de interface', detalhe: 'Aprovada pelo cliente · fase fechada em 17/08/2026' },
+    { fase: '5', nomeFase: 'Arquitetura e stack', detalhe: 'Aprovada pelo cliente · fase fechada em 31/08/2026' }
+  ];
+
+  var vazio = document.getElementById('timeline-vazio');
+  var lista = document.getElementById('timeline-lista');
+  var modal = document.getElementById('modal-aprovacao');
+  var modalTitulo = document.getElementById('modal-titulo');
+  var modalNome = document.getElementById('modal-nome');
+  var blocoConfirmacao = document.getElementById('modal-bloco-confirmacao');
+  var linkWhatsapp = document.getElementById('link-whatsapp');
+  var btnCancelar = document.getElementById('modal-cancelar');
+  var btnConfirmar = document.getElementById('modal-confirmar');
+
+  var btnAtual = null;
+
+  function carregarRegistros() {
+    try {
+      var bruto = localStorage.getItem(CHAVE_LOCAL);
+      return bruto ? JSON.parse(bruto) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function salvarRegistros(registros) {
+    try { localStorage.setItem(CHAVE_LOCAL, JSON.stringify(registros)); } catch (e) {}
+  }
+
+  function renderizarItem(registro) {
+    var item = document.createElement('li');
+    var titulo = document.createElement('strong');
+    titulo.textContent = 'Fase ' + registro.fase + ' — ' + registro.nomeFase;
+    var detalhe = document.createElement('span');
+    // [Alteração] Autor: Junior | Data/Hora: 13/10/2026 14:41
+    // aprovação fixa traz o texto pronto (sem nome/carimbo); a do navegador monta como antes
+    detalhe.textContent = registro.detalhe ||
+      ('Aprovada por ' + registro.aprovador + ' em ' + registro.carimbo);
+    item.appendChild(titulo);
+    item.appendChild(detalhe);
+    lista.appendChild(item);
+    vazio.style.display = 'none';
+  }
+
+  // Ao carregar a página, redesenha a timeline com o que já foi aprovado antes
+  // (localStorage) e trava de novo os botões já aprovados.
+  // [Alteração] Autor: Junior | Data/Hora: 13/10/2026 14:41
+  // Aprovações fixas primeiro; do localStorage entram só fases ainda não registradas,
+  // pra não duplicar na timeline o que o cliente já tinha clicado no navegador dele.
+  var fasesFixas = APROVACOES_REGISTRADAS.map(function (r) { return r.fase; });
+  var registros = APROVACOES_REGISTRADAS.concat(carregarRegistros().filter(function (r) {
+    return fasesFixas.indexOf(r.fase) === -1;
+  }));
+  var botoesTodos = document.querySelectorAll('.btn-aprovar');
+  registros.forEach(function (registro) {
+    renderizarItem(registro);
+    for (var j = 0; j < botoesTodos.length; j++) {
+      if (botoesTodos[j].dataset.fase === registro.fase) {
+        botoesTodos[j].textContent = registro.aprovador ? 'Aprovado por ' + registro.aprovador : 'Aprovado';
+        botoesTodos[j].disabled = true;
+        botoesTodos[j].classList.add('aprovado');
+      }
+    }
+  });
+
+  function abrirModal(btn) {
+    btnAtual = btn;
+    modalTitulo.textContent = 'Aprovar Fase ' + btn.dataset.fase + ' — ' + btn.dataset.nome;
+    modalNome.value = '';
+    modalNome.style.display = '';
+    blocoConfirmacao.style.display = 'none';
+    btnConfirmar.style.display = '';
+    modal.classList.add('aberto');
+    modalNome.focus();
+  }
+  function fecharModal() {
+    modal.classList.remove('aberto');
+    btnAtual = null;
+  }
+
+  function confirmarAprovacao() {
+    var nomeDigitado = modalNome.value.trim();
+    if (!nomeDigitado || !btnAtual) return;
+    var btn = btnAtual;
+
+    var agora = new Date();
+    var carimbo = agora.toLocaleDateString('pt-BR') + ' às ' +
+      agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    var registro = {
+      fase: btn.dataset.fase,
+      nomeFase: btn.dataset.nome,
+      aprovador: nomeDigitado,
+      carimbo: carimbo,
+      iso: agora.toISOString()
+    };
+    var atuais = carregarRegistros();
+    atuais.push(registro);
+    salvarRegistros(atuais);
+    renderizarItem(registro);
+
+    btn.textContent = 'Aprovado por ' + nomeDigitado;
+    btn.disabled = true;
+    btn.classList.add('aprovado');
+
+    var mensagem = nomeDigitado + ' aprova a Fase ' + btn.dataset.fase + ' — ' + btn.dataset.nome +
+      ' do projeto SIGA, em ' + carimbo + '.';
+
+    // Link real de WhatsApp (wa.me é https normal, passa pelo mecanismo de abertura
+    // de link do Artifact) — o usuário clica e o app de WhatsApp dele abre já com a
+    // mensagem preenchida, pronta pra mandar pro número da equipe.
+    linkWhatsapp.href = 'https://wa.me/' + WHATSAPP_NUMERO + '?text=' + encodeURIComponent(mensagem);
+
+    modalNome.style.display = 'none';
+    btnConfirmar.style.display = 'none';
+    blocoConfirmacao.style.display = '';
+  }
+
+  var botoes = document.querySelectorAll('.btn-aprovar');
+  for (var i = 0; i < botoes.length; i++) {
+    botoes[i].addEventListener('click', function (ev) {
+      if (ev.currentTarget.disabled) return;
+      abrirModal(ev.currentTarget);
+    });
+  }
+  btnCancelar.addEventListener('click', fecharModal);
+  btnConfirmar.addEventListener('click', confirmarAprovacao);
+  modalNome.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') confirmarAprovacao();
+  });
+})();
+</script>
+
+<script>
+/* [Alteração] Autor: vcj81 | Data/Hora: 14/10/2026 11:55
+   Cor dos botões "Responder checklist" lida do Web App ao abrir a página:
+   nunca = vermelho, aberto = laranja, enviado = verde (CSS por data-estado).
+   Verde (já respondido) também troca o texto pra "Responder checklist novamente":
+   o Web App abre com a última resposta já preenchida, pra revisar e reenviar.
+   O Apps Script responde ?status=1 com CORS liberado, então o fetch funciona daqui.
+   Sem rede ou com erro, os botões ficam no âmbar padrão — o link continua funcionando. */
+(function () {
+  var URL_STATUS = 'https://script.google.com/macros/s/AKfycbxhOdZe6UYjEbmHWLTqIhxsGbKpK16nMGQlio0tzr61mCUjLSYK203fappQHb-eM_-W/exec?status=1';
+  var TITULOS = {
+    nunca: 'Checklist ainda não aberto',
+    aberto: 'Checklist aberto, respostas ainda não enviadas',
+    enviado: 'Respostas enviadas'
+  };
+  var botoes = document.querySelectorAll('.btn-checklist[data-checklist]');
+  if (!botoes.length || !window.fetch) return;
+  fetch(URL_STATUS, { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (estado) {
+      if (!estado) return;
+      for (var i = 0; i < botoes.length; i++) {
+        var e = estado[botoes[i].dataset.checklist];
+        if (!TITULOS[e]) continue;
+        botoes[i].dataset.estado = e;
+        botoes[i].title = TITULOS[e];
+        // [Alteração] Autor: vcj81 | Data/Hora: 28/10/2026 15:42
+        // Botão com data-rotulo-enviado (ex.: 2ª rodada da Fase 6) usa o próprio texto.
+        if (e === 'enviado') {
+          botoes[i].textContent = botoes[i].dataset.rotuloEnviado || 'Responder checklist novamente';
+        }
+      }
+    })
+    .catch(function () {});
+})();
+
+// PWA: service worker com cache dos arquivos estáticos (sw.js).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
